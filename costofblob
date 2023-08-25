@@ -1,0 +1,55 @@
+from pyspark.sql import SparkSession
+from azure.storage.blob import BlobServiceClient
+import os
+
+# Initialize Spark session
+spark = SparkSession.builder.appName("ContainerCostAnalysis").getOrCreate()
+
+# Azure Blob Storage credentials
+account_name = ""
+account_key = ""
+container_name = ""
+
+# Create a BlobServiceClient
+blob_service_client = BlobServiceClient(account_url=f"https://{account_name}.blob.core.windows.net", credential=account_key)
+
+# Get a reference to the container
+container_client = blob_service_client.get_container_client(container_name)
+
+# Define pricing information
+hot_tier_price_per_gb = 7.0125  # Adjust the price as per your cloud provider's rates
+cool_tier_price_per_gb = 4.01    # Adjust the price as per your cloud provider's rates
+
+# List blobs in the container
+blobs = container_client.list_blobs()
+
+# Define a function to calculate the cost
+def calculate_cost(blob_size_bytes, access_tier):
+    if access_tier == "Hot":
+        return (blob_size_bytes / (1024 ** 3)) * hot_tier_price_per_gb
+    elif access_tier == "Cool":
+        return (blob_size_bytes / (1024 ** 3)) * cool_tier_price_per_gb
+    else:
+        return 0.0
+
+# Create a dictionary to store folder-level costs
+folder_costs = {}
+
+# Iterate through blobs and calculate costs
+for blob in blobs:
+    blob_size_bytes = blob.size
+    access_tier = blob.blob_tier
+    cost = calculate_cost(blob_size_bytes, access_tier)
+    
+    # Extract folder path from blob name
+    folder_path = os.path.dirname(blob.name)
+    
+    # Update folder cost in the dictionary
+    folder_costs[folder_path] = folder_costs.get(folder_path, 0) + cost
+
+# Print folder-level costs
+for folder, cost in folder_costs.items():
+    print(f"Folder: {folder}, Cost: ${cost:.2f}")
+
+# Stop the Spark session
+#spark.stop()
