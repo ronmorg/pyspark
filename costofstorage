@@ -1,0 +1,86 @@
+from azure.storage.blob import BlobServiceClient
+
+
+
+
+def calculate_cost(blob_size_bytes, access_tier):
+
+    if access_tier == "Hot":
+
+        return (blob_size_bytes / (1024 ** 3)) * hot_tier_price_per_gb
+
+    elif access_tier == "Cool":
+
+        return (blob_size_bytes / (1024 ** 3)) * cool_tier_price_per_gb
+
+    else:
+
+        return 0.0
+
+    # Azure Blob Storage credentials
+
+account_name = ""
+
+account_key = ""
+
+ 
+
+# Create a BlobServiceClient
+
+blob_service_client = BlobServiceClient(account_url=f[https://%7baccount_name%7d.blob.core.windows.net]https://{account_name}.blob.core.windows.net, credential=account_key)
+
+ 
+
+# Define pricing information
+
+hot_tier_price_per_gb = 0.0125  # Adjust the price as per your cloud provider's rates
+
+cool_tier_price_per_gb = 0.01    # Adjust the price as per your cloud provider's rates
+
+# Iterate through all containers
+
+for container in blob_service_client.list_containers():
+
+    container_name = container['name']
+
+   
+
+    # Get a reference to the container
+
+    container_client = blob_service_client.get_container_client(container_name)
+
+   
+
+    # Initialize a dictionary to store folder-level costs
+
+    folder_costs = {}
+
+   
+
+    # List blobs in the container
+
+    blobs = container_client.list_blobs()
+
+   
+
+    # Iterate through blobs and calculate costs for folders
+
+    for blob in blobs:
+
+        blob_name = blob.name
+
+        if "/" in blob_name:
+
+            folder_path = blob_name.split("/")[0]  # Get the name of the folder
+
+            folder_costs[folder_path] = folder_costs.get(folder_path, 0) + calculate_cost(blob.size, blob.blob_tier)
+
+   
+
+    # Print folder-level costs for one level below the container
+
+    print(f"Container: {container_name}")
+
+    for folder, cost in folder_costs.items():
+
+        print(f"  Folder: {folder}, Cost: ${cost:.2f}")
